@@ -1,4 +1,4 @@
-# Nun_bot
+# Nun_bot_arduino
 #### Bluno Mega + Sensor Shield Code
 This repository contains code for the Bluno Mega board paired with a Mega Sensor Shield that is used as the low level controller of a mobile robot.
 
