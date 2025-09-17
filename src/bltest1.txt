@@ -16,7 +16,7 @@
 BnrOmni omni;                 // Create OMNI-3MD object
 
 // Movement parameters
-int current_speed = 50;       // Default speed (0-100)
+int current_speed = 30;       // Default speed (0-100)
 int min_speed = 10;
 int max_speed = 100;
 int speed_increment = 10;
@@ -146,7 +146,7 @@ void setup() {
   omni.setI2cTimeout(50);
   
   // Configure PID parameters (adjust based on your system)
-  omni.setPid(850, 450, 250);
+  omni.setPid(900, 450, 250);
   
   // Configure ramp parameters for smooth acceleration
   omni.setRamp(35, 950);

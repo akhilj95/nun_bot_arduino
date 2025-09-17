@@ -1,9 +1,11 @@
 #include <Arduino.h>
 
-// Digital sensor pins
+// Digital IR sensor pins
 const int digitalPins[6] = {14, 15, 16, 18, 19, 20};
-// Analog sensor pins
+// Analog IR sensor pins
 const int analogPins[2] = {A6, A7};
+// Voltage sensor pins
+const int voltagePins[2] = {A12, A14};
 // Button pins
 const int buttonPairing = 28;
 const int buttonOnOff = 30;
@@ -12,6 +14,10 @@ const int buttonOnOff = 30;
 uint16_t get_gp2d12 (uint16_t value) {
     if (value < 10) value = 10;
     return ((67870.0 / (value - 3.0)) - 40.0);
+}    
+
+float get_voltage (uint16_t value) {
+    return (((float)value/1024)*4.8*5.0);
 }
 
 void setup() {
@@ -26,7 +32,7 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("Digital Sensor Readings:");
+  Serial.println("Digital IR Sensor Readings:");
   for (int i = 0; i < 6; i++) {
     int digitalValue = digitalRead(digitalPins[i]);
     Serial.print("Digital pin ");
@@ -35,7 +41,7 @@ void loop() {
     Serial.println(digitalValue);
   }
 
-  Serial.println("Analog Sensor Readings:");
+  Serial.println("Analog IR Sensor Readings:");
   for (int i = 0; i < 2; i++) {
     uint16_t analogValue = analogRead(analogPins[i]);
     uint16_t range = get_gp2d12 (analogValue);
@@ -43,6 +49,16 @@ void loop() {
     Serial.print(analogPins[i]);
     Serial.print(": ");
     Serial.println(range);
+  }
+
+  Serial.println("Voltage Sensor Readings:");
+  for (int i = 0; i < 2; i++) {
+    uint16_t analogValue = analogRead(voltagePins[i]);
+    float voltage = get_voltage (analogValue);
+    Serial.print("Analog pin ");
+    Serial.print(voltagePins[i]);
+    Serial.print(": ");
+    Serial.println(voltage);
   }
 
   int buttonState = digitalRead(buttonPairing);

@@ -66,9 +66,9 @@ void setup() {
   omni.setPid(950, 150, 300);
   omni.setRamp(50, 950);
   omni.setMinBat(12.0);
-  omni.setEncPrescaler(M1, 1);
-  omni.setEncPrescaler(M2, 1);
-  omni.setEncPrescaler(M3, 1);
+  omni.setEncPrescaler(M1, 0);
+  omni.setEncPrescaler(M2, 0);
+  omni.setEncPrescaler(M3, 0);
   omni.stop();
 }
 
