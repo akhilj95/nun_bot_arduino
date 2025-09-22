@@ -5,6 +5,7 @@
 BnrOmni omni;
 
 #define OMNI3MD_ADDRESS 0x30
+#define BAUDRATE 57600 // 115200
 
 // Sensors and buttons pins
 const int irProximityPins[6] = {14, 15, 16, 18, 19, 20};
@@ -19,7 +20,7 @@ uint16_t irDistanceVals[2];
 float voltage[2];
 bool buttonPairingState = false;
 bool buttonOnOffState = false;
-int enc1, enc2, enc3;
+int enc1 = 0, enc2 = 0, enc3 = 0;
 int prevEnc1 = 0, prevEnc2 = 0, prevEnc3 = 0;
 unsigned long prevEncTime = 0;
 float vel1 = 0.0, vel2 = 0.0, vel3 = 0.0;
@@ -27,7 +28,7 @@ float vel1 = 0.0, vel2 = 0.0, vel3 = 0.0;
 unsigned long lastReadTime = 0;
 unsigned long lastSendTime = 0;
 const unsigned long readInterval = 50; // 50 ms control period
-const unsigned long sendInterval = 25; // 25 ms control period
+const unsigned long sendInterval = 50; // 50 ms control period
 
 const float counts_per_revolution = 57.6; // Wheel encoder counts per revolution
 
@@ -136,6 +137,8 @@ void calculateWheelVelocity() {
 
   // Read current encoder counts
   omni.readEncoders(&enc1, &enc2, &enc3);
+
+  delay(5);
   
   // Calculate delta counts
   int deltaEnc1 = enc1 - prevEnc1;
@@ -146,6 +149,8 @@ void calculateWheelVelocity() {
   vel1 = angular_velocity((deltaEnc1 * 1000.0) / deltaTime);
   vel2 = angular_velocity((deltaEnc2 * 1000.0) / deltaTime);
   vel3 = angular_velocity((deltaEnc3 * 1000.0) / deltaTime);
+  
+  Serial.println("outside ang vel:");
 
   // Update previous counts and time
   prevEnc1 = enc1;
@@ -189,7 +194,7 @@ void sendDataROS() {
 }
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(BAUDRATE);
   Wire.begin();
   omni.i2cConnect(OMNI3MD_ADDRESS);
   omni.setI2cTimeout(10);
@@ -199,6 +204,7 @@ void setup() {
   omni.setEncPrescaler(M1, 0);
   omni.setEncPrescaler(M2, 0);
   omni.setEncPrescaler(M3, 0);
+  omni.readEncoders(&enc1, &enc2, &enc3);
   omni.stop();
 
   // Initialize digital sensor and button pins
@@ -227,7 +233,7 @@ void loop() {
   // Periodic encoder and ROS update
   if (millis() - lastSendTime > sendInterval) {
     lastSendTime = millis();
-    calculateWheelVelocity();
+    //calculateWheelVelocity();
     sendDataROS();
   }
   
