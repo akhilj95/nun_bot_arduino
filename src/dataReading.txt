@@ -42,6 +42,8 @@ Purpose:
 //constants definitions
 #define OMNI3MD_ADDRESS 0x30        //default factory address
 
+#define BAUDRATE 57600 // 115200
+
 BnrOmni omni;                       //declaration of object variable to control the Omni3MD
 
 /*** variable declarations ***/
@@ -123,7 +125,7 @@ void setup()
 {
     //setup routines
     delay(1500);                       // wait electronics to stabilize
-    Serial.begin(115200);               // set baud rate to 115200bps for printing values on serial monitor. Press (ctrl+shift+m) after uploading
+    Serial.begin(BAUDRATE);               // set baud rate to 115200bps for printing values on serial monitor. Press (ctrl+shift+m) after uploading
     omni.i2cConnect(OMNI3MD_ADDRESS);  // set i2c connection
     omni.stop();                       // stop all motors
 }

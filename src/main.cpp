@@ -5,32 +5,32 @@
 BnrOmni omni;
 
 #define OMNI3MD_ADDRESS 0x30
-#define BAUDRATE 57600 // 115200
+#define BAUDRATE 115200  // 9600, 19200, 38400, 57600, 115200
 
 // Sensors and buttons pins
-const int irProximityPins[6] = {14, 15, 16, 18, 19, 20};
+const int irProximityPins[5] = {14, 15, 16, 18, 19};
 const int irDistancePins[2] = {A6, A7};
 const int voltagePins[2] = {A12, A14};
 const int buttonPairingPin = 28;
 const int buttonOnOffPin = 30;
 
 // Variables to store sensor/button states
-int irProximityVals[6];
+int irProximityVals[5];
 uint16_t irDistanceVals[2];
 float voltage[2];
 bool buttonPairingState = false;
 bool buttonOnOffState = false;
-int enc1 = 0, enc2 = 0, enc3 = 0;
+int enc1, enc2, enc3;
 int prevEnc1 = 0, prevEnc2 = 0, prevEnc3 = 0;
 unsigned long prevEncTime = 0;
 float vel1 = 0.0, vel2 = 0.0, vel3 = 0.0;
 
 unsigned long lastReadTime = 0;
 unsigned long lastSendTime = 0;
-const unsigned long readInterval = 50; // 50 ms control period
-const unsigned long sendInterval = 50; // 50 ms control period
+const unsigned long readInterval = 50; // For IR and Battery readings
+const unsigned long sendInterval = 30; // For encoder reading and ROS sending
 
-const float counts_per_revolution = 57.6; // Wheel encoder counts per revolution
+const float counts_per_revolution = 2880; // Wheel encoder counts per revolution
 
 unsigned long last_command_time = 0;
 const unsigned long command_timeout_ms = 5000;  // Stop if no command in 5s
@@ -105,7 +105,7 @@ float get_voltage (uint16_t value) {
 
 // Read all sensors and button states
 void readSensors() {
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < 5; i++) {
     irProximityVals[i] = digitalRead(irProximityPins[i]);
   }
   for (int i = 0; i < 2; i++) {
@@ -138,25 +138,30 @@ void calculateWheelVelocity() {
   // Read current encoder counts
   omni.readEncoders(&enc1, &enc2, &enc3);
 
-  delay(5);
+  delay(2); // giving enough time for i2c
   
   // Calculate delta counts
   int deltaEnc1 = enc1 - prevEnc1;
   int deltaEnc2 = enc2 - prevEnc2;
   int deltaEnc3 = enc3 - prevEnc3;
 
-  // Calculate velocity counts per second
-  vel1 = angular_velocity((deltaEnc1 * 1000.0) / deltaTime);
-  vel2 = angular_velocity((deltaEnc2 * 1000.0) / deltaTime);
-  vel3 = angular_velocity((deltaEnc3 * 1000.0) / deltaTime);
-  
-  Serial.println("outside ang vel:");
-
   // Update previous counts and time
   prevEnc1 = enc1;
   prevEnc2 = enc2;
   prevEnc3 = enc3;
   prevEncTime = currentTime;
+
+  if (abs(deltaEnc1) > counts_per_revolution || abs(deltaEnc2) > counts_per_revolution ||  
+     abs(deltaEnc3) > counts_per_revolution) {
+    // Something is wrong to make such a big jump. Ignore reading
+    return;
+  }
+
+  // Calculate velocity counts per second
+  vel1 = angular_velocity((deltaEnc1 * 1000.0) / deltaTime);
+  vel2 = angular_velocity((deltaEnc2 * 1000.0) / deltaTime);
+  vel3 = angular_velocity((deltaEnc3 * 1000.0) / deltaTime);
+
 }
 
 // Send sensor and encoder data back to ROS node
@@ -169,9 +174,9 @@ void sendDataROS() {
   Serial.print(vel3);
 
   Serial.print(";IRP:");
-  for (int i=0; i<6; i++) {
+  for (int i=0; i<5; i++) {
     Serial.print(irProximityVals[i]);
-    if (i<5) Serial.print(",");
+    if (i<4) Serial.print(",");
   }
 
   Serial.print(";IRD:");
@@ -195,6 +200,7 @@ void sendDataROS() {
 
 void setup() {
   Serial.begin(BAUDRATE);
+  Serial.setTimeout(100);
   Wire.begin();
   omni.i2cConnect(OMNI3MD_ADDRESS);
   omni.setI2cTimeout(10);
@@ -208,7 +214,7 @@ void setup() {
   omni.stop();
 
   // Initialize digital sensor and button pins
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < 5; i++) {
     pinMode(irProximityPins[i], INPUT);
   }
   pinMode(buttonPairingPin, INPUT_PULLUP);
@@ -233,7 +239,7 @@ void loop() {
   // Periodic encoder and ROS update
   if (millis() - lastSendTime > sendInterval) {
     lastSendTime = millis();
-    //calculateWheelVelocity();
+    calculateWheelVelocity();
     sendDataROS();
   }
   
