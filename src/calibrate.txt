@@ -54,7 +54,7 @@ void setup()
     omni.setEncPrescaler(1, 0);        //Set prescaler : 1 define prescaler of 10
     omni.setEncPrescaler(2, 0);        //Set prescaler : 1 define prescaler of 10
     omni.setEncPrescaler(3, 0);        //Set prescaler : 1 define prescaler of 10
-    omni.calibrate(1,1,1);             // send the calibration command with parameters, to configure the OMmni3MD board
+    omni.calibrate(0,0,0);             // send the calibration command with parameters, to configure the OMmni3MD board
     delay(20000);                      // wait 20s for calibration to end
   /*
   Important:
