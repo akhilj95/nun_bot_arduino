@@ -27,8 +27,8 @@ float vel1 = 0.0, vel2 = 0.0, vel3 = 0.0;
 
 unsigned long lastReadTime = 0;
 unsigned long lastSendTime = 0;
-const unsigned long readInterval = 50; // For IR and Battery readings
-const unsigned long sendInterval = 30; // For encoder reading and ROS sending
+const unsigned long readInterval = 60; // For IR and Battery readings
+const unsigned long sendInterval = 50; // For encoder reading and ROS sending
 
 const float counts_per_revolution = 2880; // Wheel encoder counts per revolution
 
@@ -196,6 +196,10 @@ void sendDataROS() {
   Serial.print(",");
   Serial.print(buttonOnOffState ? "1" : "0");
   Serial.println();
+
+  Serial.flush();
+
+  delay(1);
 }
 
 void setup() {
