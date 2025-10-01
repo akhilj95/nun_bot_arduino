@@ -207,8 +207,8 @@ void setup() {
   Wire.begin();
   omni.i2cConnect(OMNI3MD_ADDRESS);
   omni.setI2cTimeout(10);
-  omni.setPid(980, 100, 300);
-  omni.setRamp(75, 950);
+  omni.setPid(900, 50, 150);
+  omni.setRamp(50, 950);
   omni.setMinBat(12.2);
   omni.setEncPrescaler(M1, 0);
   omni.setEncPrescaler(M2, 0);
