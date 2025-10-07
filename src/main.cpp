@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <BnrOmni.h>
+#include <avr/wdt.h>
 
 BnrOmni omni;
 
@@ -204,6 +205,9 @@ void sendDataROS() {
 void setup() {
   Serial.begin(BAUDRATE);
   Serial.setTimeout(100);
+
+  wdt_disable();  // Disable the watchdog to be safe
+
   Wire.begin();
   omni.i2cConnect(OMNI3MD_ADDRESS);
   omni.setI2cTimeout(10);
@@ -219,8 +223,12 @@ void setup() {
   // Initialize button pins
   pinMode(buttonPairingPin, INPUT_PULLUP);
   pinMode(buttonOnOffPin, INPUT_PULLUP);
+  
+  delay(500);
 
   prevEncTime = millis();
+
+  wdt_enable(WDTO_8S);  /* Enable the watchdog with a timeout of 8 seconds */
 }
 
 void loop() {
@@ -228,6 +236,7 @@ void loop() {
   if (Serial.available()) {
     String cmd = Serial.readStringUntil('\n');
     handleCommand(cmd);
+    wdt_reset();  /* Reset the watchdog */
   }
 
   // Periodic sensor reading
@@ -241,6 +250,7 @@ void loop() {
     lastSendTime = millis();
     calculateWheelVelocity();
     sendDataROS();
+    wdt_reset();  /* Reset the watchdog */
   }
   
   if (millis() - last_command_time > command_timeout_ms) {
@@ -249,6 +259,7 @@ void loop() {
       Serial.println(last_command_time);
       omni.stop();
       is_stopped = true;
+      wdt_reset();  /* Reset the watchdog */
     }
   }
 }

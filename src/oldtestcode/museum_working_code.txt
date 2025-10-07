@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <BnrOmni.h>
+#include <avr/wdt.h>
 
 BnrOmni omni;
 
@@ -8,18 +9,17 @@ BnrOmni omni;
 #define BAUDRATE 115200  // 9600, 19200, 38400, 57600, 115200
 
 // Sensors and buttons pins
-const int irProximityPins[5] = {14, 15, 16, 18, 19};
 const int irDistancePins[2] = {A6, A7};
 const int voltagePins[2] = {A12, A14};
 const int buttonPairingPin = 28;
 const int buttonOnOffPin = 30;
 
 // Variables to store sensor/button states
-int irProximityVals[5];
 uint16_t irDistanceVals[2];
 float voltage[2];
 bool buttonPairingState = false;
 bool buttonOnOffState = false;
+int deltaEnc1, deltaEnc2, deltaEnc3;
 int enc1, enc2, enc3;
 int prevEnc1 = 0, prevEnc2 = 0, prevEnc3 = 0;
 unsigned long prevEncTime = 0;
@@ -27,8 +27,8 @@ float vel1 = 0.0, vel2 = 0.0, vel3 = 0.0;
 
 unsigned long lastReadTime = 0;
 unsigned long lastSendTime = 0;
-const unsigned long readInterval = 50; // For IR and Battery readings
-const unsigned long sendInterval = 30; // For encoder reading and ROS sending
+const unsigned long readInterval = 75; // For IR and Battery readings
+const unsigned long sendInterval = 50; // For encoder reading and ROS sending
 
 const float counts_per_revolution = 2880; // Wheel encoder counts per revolution
 
@@ -105,9 +105,6 @@ float get_voltage (uint16_t value) {
 
 // Read all sensors and button states
 void readSensors() {
-  for (int i = 0; i < 5; i++) {
-    irProximityVals[i] = digitalRead(irProximityPins[i]);
-  }
   for (int i = 0; i < 2; i++) {
     uint16_t analogValue = analogRead(irDistancePins[i]);
     irDistanceVals[i] = get_gp2d12(analogValue);
@@ -141,9 +138,9 @@ void calculateWheelVelocity() {
   delay(2); // giving enough time for i2c
   
   // Calculate delta counts
-  int deltaEnc1 = enc1 - prevEnc1;
-  int deltaEnc2 = enc2 - prevEnc2;
-  int deltaEnc3 = enc3 - prevEnc3;
+  deltaEnc1 = enc1 - prevEnc1;
+  deltaEnc2 = enc2 - prevEnc2;
+  deltaEnc3 = enc3 - prevEnc3;
 
   // Update previous counts and time
   prevEnc1 = enc1;
@@ -154,7 +151,9 @@ void calculateWheelVelocity() {
   if (abs(deltaEnc1) > counts_per_revolution || abs(deltaEnc2) > counts_per_revolution ||  
      abs(deltaEnc3) > counts_per_revolution) {
     // Something is wrong to make such a big jump. Ignore reading
-    return;
+    deltaEnc1 = 0;
+    deltaEnc2 = 0;
+    deltaEnc3 = 0;
   }
 
   // Calculate velocity counts per second
@@ -166,18 +165,19 @@ void calculateWheelVelocity() {
 
 // Send sensor and encoder data back to ROS node
 void sendDataROS() {
-  Serial.print("VEL:");
+  Serial.print("DEN:");
+  Serial.print(deltaEnc1);
+  Serial.print(",");
+  Serial.print(deltaEnc2);
+  Serial.print(",");
+  Serial.print(deltaEnc3);
+
+  Serial.print(";VEL:");
   Serial.print(vel1);
   Serial.print(",");
   Serial.print(vel2);
   Serial.print(",");
   Serial.print(vel3);
-
-  Serial.print(";IRP:");
-  for (int i=0; i<5; i++) {
-    Serial.print(irProximityVals[i]);
-    if (i<4) Serial.print(",");
-  }
 
   Serial.print(";IRD:");
   for (int i=0; i<2; i++) {
@@ -205,11 +205,14 @@ void sendDataROS() {
 void setup() {
   Serial.begin(BAUDRATE);
   Serial.setTimeout(100);
+
+  wdt_disable();  // Disable the watchdog to be safe
+
   Wire.begin();
   omni.i2cConnect(OMNI3MD_ADDRESS);
   omni.setI2cTimeout(10);
-  omni.setPid(980, 100, 300);
-  omni.setRamp(75, 950);
+  omni.setPid(900, 50, 300);
+  omni.setRamp(50, 950);
   omni.setMinBat(12.2);
   omni.setEncPrescaler(M1, 0);
   omni.setEncPrescaler(M2, 0);
@@ -217,14 +220,15 @@ void setup() {
   omni.readEncoders(&enc1, &enc2, &enc3);
   omni.stop();
 
-  // Initialize digital sensor and button pins
-  for (int i = 0; i < 5; i++) {
-    pinMode(irProximityPins[i], INPUT);
-  }
+  // Initialize button pins
   pinMode(buttonPairingPin, INPUT_PULLUP);
   pinMode(buttonOnOffPin, INPUT_PULLUP);
 
   prevEncTime = millis();
+
+  delay(500);
+
+  wdt_enable(WDTO_8S);  /* Enable the watchdog with a timeout of 8 seconds */
 }
 
 void loop() {
@@ -232,6 +236,7 @@ void loop() {
   if (Serial.available()) {
     String cmd = Serial.readStringUntil('\n');
     handleCommand(cmd);
+    wdt_reset();  /* Reset the watchdog */
   }
 
   // Periodic sensor reading
@@ -245,6 +250,7 @@ void loop() {
     lastSendTime = millis();
     calculateWheelVelocity();
     sendDataROS();
+    wdt_reset();  /* Reset the watchdog */
   }
   
   if (millis() - last_command_time > command_timeout_ms) {
@@ -253,6 +259,7 @@ void loop() {
       Serial.println(last_command_time);
       omni.stop();
       is_stopped = true;
+      wdt_reset();  /* Reset the watchdog */
     }
   }
 }
